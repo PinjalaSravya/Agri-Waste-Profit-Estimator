@@ -1,148 +1,67 @@
-import tkinter as tk
-from tkinter import messagebox
 
-# AGRI WASTE DATABASE
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
 
 AGRI_WASTE_DB = {
-    "🌾 Rice Straw": {
+    "Rice Straw": {
+        "emoji": "🌾",
         "uses": ["Cattle Feed", "Biofuel", "Organic Compost"],
         "price": 3000
     },
-    "🌿 Wheat Straw": {
+    "Wheat Straw": {
+        "emoji": "🌿",
         "uses": ["Animal Bedding", "Paper Making", "Compost"],
         "price": 2500
     },
-    "🍬 Sugarcane Bagasse": {
+    "Sugarcane Bagasse": {
+        "emoji": "🍬",
         "uses": ["Bio Energy", "Eco Packaging", "Paper Industry"],
         "price": 4000
     },
-    "🥥 Coconut Husk": {
+    "Coconut Husk": {
+        "emoji": "🥥",
         "uses": ["Coir Fiber", "Rope Making", "Mulching"],
         "price": 3500
     },
-    "🍌 Banana Stem": {
+    "Banana Stem": {
+        "emoji": "🍌",
         "uses": ["Fiber Extraction", "Organic Manure"],
         "price": 2800
     }
 }
 
-# CALCULATION FUNCTION
+@app.route("/")
+def index():
+    wastes = {k: v["emoji"] + " " + k for k, v in AGRI_WASTE_DB.items()}
+    return render_template("index.html", wastes=wastes)
 
-def calculate_profit():
-    waste = waste_var.get()
-    qty = quantity_entry.get()
+@app.route("/calculate", methods=["POST"])
+def calculate():
+    data = request.json
+    waste = data.get("waste")
+    quantity = data.get("quantity")
 
-    if waste == "Select Waste":
-        messagebox.showerror("Error", "Please select a waste type")
-        return
+    if waste not in AGRI_WASTE_DB:
+        return jsonify({"error": "Invalid waste type"}), 400
 
     try:
-        qty = float(qty)
-        if qty <= 0:
+        quantity = float(quantity)
+        if quantity <= 0:
             raise ValueError
-    except ValueError:
-        messagebox.showerror("Error", "Enter a valid quantity")
-        return
+    except (ValueError, TypeError):
+        return jsonify({"error": "Enter a valid quantity"}), 400
 
-    data = AGRI_WASTE_DB[waste]
-    total_profit = qty * data["price"]
-    uses_text = "\n".join(data["uses"])
+    info = AGRI_WASTE_DB[waste]
+    total = quantity * info["price"]
 
-    result_label.config(
-        text=f"""
-Waste Type      : {waste}
-Quantity        : {qty} tons
+    return jsonify({
+        "waste": info["emoji"] + " " + waste,
+        "quantity": quantity,
+        "uses": info["uses"],
+        "price_per_ton": info["price"],
+        "total_profit": total
+    })
 
-Possible Uses:
-{uses_text}
-
-Price per ton   : ₹{data['price']}
-Estimated Profit: ₹{total_profit}
-""",
-        bg="#E8F5E9",
-        fg="black"
-    )
-
-# GUI SETUP
-
-root = tk.Tk()
-root.title("Agri Waste Profit Estimator")
-root.geometry("460x520")
-root.resizable(False, False)
-
-# Window background
-root.configure(bg="lightgreen") 
-# TITLE
-
-title = tk.Label(
-    root,
-    text="🌾 Agri Waste Profit Estimator 🌾",
-    font=("Arial", 16, "bold"),
-    bg="#E8F5E9",
-    fg="#2E7D32"
-)
-title.pack(pady=12)
-
-# WASTE SELECTION
-
-tk.Label(
-    root,
-    text="Select Waste Type:",
-    font=("Arial", 11),
-    bg="#E8F5E9"
-).pack()
-
-waste_var = tk.StringVar()
-waste_var.set("Select Waste")
-
-waste_menu = tk.OptionMenu(root, waste_var, *AGRI_WASTE_DB.keys())
-waste_menu.config(
-    bg="#A5D6A7",
-    fg="black",
-    font=("Arial", 10, "bold"),
-    width=25
-)
-waste_menu["menu"].config(
-    bg="#E8F5E9",
-    fg="darkgreen"
-)
-waste_menu.pack(pady=6)
-
-# QUANTITY INPUT
-
-tk.Label(
-    root,
-    text="Enter Quantity (in tons):",
-    font=("Arial", 11),
-    bg="white"
-).pack()
-
-quantity_entry = tk.Entry(root, width=20)
-quantity_entry.pack(pady=6)
-
-# BUTTON
-
-tk.Button(
-    root,
-    text="Calculate Profit",
-    command=calculate_profit,
-    bg="#2E7D32",
-    fg="white",
-    font=("Arial", 11, "bold"),
-    width=18
-).pack(pady=10)
-
-# RESULT DISPLAY
-
-result_label = tk.Label(
-    root,
-    text="",
-    font=("Arial", 10),
-    justify="left",
-    bg="White"
-)
-result_label.pack(pady=10)
-
-# RUN APPLICATION
-
-root.mainloop()
+if __name__ == "__main__":
+    app.run(debug=True)
